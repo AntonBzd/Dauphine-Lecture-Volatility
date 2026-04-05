@@ -65,7 +65,7 @@ class SVISmoother(VolSmoother):
         result = minimize(
             objective,
             self._params,
-            method="L-BFGS-B",
+            method="SLSQP", # SLSQP supporte les bornes et les contraintes mieux que L-BFGS-B, 
             bounds=bounds,
             constraints={"type": "ineq", "fun": no_arbitrage_constraint},
             options={"maxiter": 1000, "disp": False},

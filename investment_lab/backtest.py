@@ -52,10 +52,10 @@ class StrategyBacktester:
         df_positions["dS"] = df_positions.groupby(["option_id"])["spot"].diff().fillna(0)
         df_positions["dt"] = 1
         logging.info("Append previous period greeks for P&L calculations.")
-        df_positions["prev_theta"] = df_positions.groupby("option_id")["theta"].shift(1).fillna(method="bfill")
-        df_positions["prev_gamma"] = df_positions.groupby("option_id")["gamma"].shift(1).fillna(method="bfill")
-        df_positions["prev_delta"] = df_positions.groupby("option_id")["delta"].shift(1).fillna(method="bfill")
-        df_positions["prev_vega"] = df_positions.groupby("option_id")["vega"].shift(1).fillna(method="bfill")
+        df_positions["prev_theta"] = df_positions.groupby("option_id")["theta"].shift(1).bfill()
+        df_positions["prev_gamma"] = df_positions.groupby("option_id")["gamma"].shift(1).bfill()
+        df_positions["prev_delta"] = df_positions.groupby("option_id")["delta"].shift(1).bfill()
+        df_positions["prev_vega"] = df_positions.groupby("option_id")["vega"].shift(1).bfill()
         df_positions["obs_date"] = df_positions["entry_date"].apply(lambda x: x - pd.Timedelta(days=1))
         df_pnl = pd.DataFrame(
             [[0, 0, 0, 0, 0, 0, 0, 0]],
@@ -84,7 +84,7 @@ class StrategyBacktester:
             df_day["vega_pnl"] = df_day["scaled_weight"] * df_day["dsigma"] * df_day["prev_vega"]
             df_day["residual_pnl"] = df_day["pnl"] - df_day["delta_pnl"] - df_day["gamma_pnl"] - df_day["theta_pnl"] - df_day["vega_pnl"]
             df_day["leverage"] = df_day["scaled_weight"] * df_day["spot"]
-            df_day["cashflow"] = 0
+            df_day["cashflow"] = 0.0
             df_day.loc[df_day["entry_date"] == df_day["date"], "cashflow"] = -df_day["scaled_weight"] * df_day["mid"]
             df_day.loc[df_day["expiration"] == df_day["date"], "cashflow"] = df_day["scaled_weight"] * df_day["mid"]
 

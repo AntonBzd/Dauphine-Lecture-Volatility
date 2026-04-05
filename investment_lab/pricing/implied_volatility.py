@@ -18,11 +18,23 @@ def implied_volatility_vectorized(
     tol: float = 1e-7,
     max_iterations: int = 10000,
 ) -> pd.Series:
+    """Compute implied volatility using a vectorized Newton-Raphson method.
+
+    Args:
+        market_price (pd.Series): Observed market prices of the options.
+        S (pd.Series): Underlying asset prices.
+        K (pd.Series): Strike prices.
+        T (pd.Series): Time to maturity in years.
+        r (pd.Series): Risk-free interest rates.
+        option_type (pd.Series): Option types ("C" or "P").
+        initial_guess (float): Initial guess for volatility.
+        tol (float): Convergence tolerance.
+        max_iterations (int): Maximum number of iterations.
+
+    Returns:
+        pd.Series: Implied volatility estimates.
     """
-    Computes Implied Volatility using the Newton-Raphson method.
-    Optimized for Pandas Series input.
-    """
-    # Initialize sigma with the initial guess, matching the index of the input
+
     sigma = pd.Series(initial_guess, index=market_price.index, dtype=float)
     logging.info("Calculate implied volatility using Newton-Raphson method")
     logging.info(
@@ -34,21 +46,16 @@ def implied_volatility_vectorized(
     for i in tqdm(
         range(max_iterations), desc="Calculating Implied Volatility", leave=True
     ):
-        # Calculate current prices and vega based on current sigma estimate
+  
         current_price = black_scholes_price(S, K, T, r, sigma, option_type)
         vega = vega_black_scholes(S, K, T, r, sigma)
 
-        # Newton-Raphson step: sigma_new = sigma - f(sigma)/f'(sigma)
-        # We add a small epsilon to vega to avoid division by zero
         price_diff = market_price - current_price
 
-        # Only update sigma where vega is significant to avoid explosion
         sigma += (price_diff / vega.replace(0, np.nan)).fillna(0)
 
-        # Optional: Keep sigma within realistic bounds (e.g., 0.001% to 500%)
         sigma = sigma.clip(lower=1e-5, upper=5.0)
 
-        # Check for convergence: if the max difference is within tolerance, stop
         if price_diff.abs().max() < tol:
             logging.info("Converged after %s iterations", i + 1)
             break

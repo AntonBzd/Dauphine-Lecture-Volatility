@@ -26,18 +26,21 @@ class OptionLoader(DataLoader):
             ticker = [ticker]
         else:
             ticker = [t for t in ticker]
-        df = df[df["ticker"].isin(ticker)]
+        df =  df.loc[df["ticker"].isin(ticker)].copy()
         df["volume"] = df["volume"].fillna(0)
         return cls._compute_final_payoff(df)
 
     @classmethod
     def _add_extra_fields(cls, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+        df = df.copy()
         df["day_to_expiration"] = (df["expiration"] - df["date"]).dt.days
         df["moneyness"] = df["strike"] / df["spot"]
         return df
 
     @staticmethod
     def _compute_final_payoff(df_option: pd.DataFrame) -> pd.DataFrame:
+        df_option = df_option.copy()
+        
         expiring_filter = df_option["date"] == df_option["expiration"].copy()
         expiring_calls_filter = expiring_filter & (df_option["call_put"] == "C")
         expiring_puts_filter = expiring_filter & (df_option["call_put"] == "P")

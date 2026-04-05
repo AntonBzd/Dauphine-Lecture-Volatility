@@ -12,6 +12,12 @@ from investment_lab.util import check_is_true
 
 class SSVISmoother(VolSmoother):
     def __init__(self, initial_params: tuple[float, float, float, float]) -> None:
+        """Initialize an SSVI volatility smoother.
+
+        Args:
+            initial_params (tuple[float, float, float, float]): Initial parameter tuple
+            ordered as (sigma, rho, eta, lamb).
+        """
         check_is_true(
             len(initial_params) == 4,
             "Initial parameters must be a tuple of (sigma, rho, eta, lamb).",
@@ -26,49 +32,42 @@ class SSVISmoother(VolSmoother):
         market_implied_vols: pd.Series | np.ndarray,
         **kwargs,
     ) -> Self:
-        """
-        Calibrate SVI parameters to market implied volatilities.
-        Parameters:
-            forward: forward price
-            strike: array of strikes
-            time_to_maturities: time to maturity
-            market_implied_vols: array of market implied volatilities
+        """Calibrate SSVI parameters to market implied volatilities.
+
+        Args:
+            forward (float | pd.Series | np.ndarray): Forward price.
+            strike (pd.Series | np.ndarray): Strike prices.
+            time_to_maturities (pd.Series | np.ndarray | float): Time to maturities in years.
+            market_implied_vols (pd.Series | np.ndarray): Observed market implied volatilities.
+            **kwargs: Additional keyword arguments.
 
         Returns:
-            Calibrated parameters (sigma, rho, eta, lamb)
+            Self: Fitted SSVI smoother.
         """
+        time_to_maturities = np.asarray(time_to_maturities, dtype=float)
+        market_implied_vols = np.asarray(market_implied_vols, dtype=float)
 
-        def objective(params: tuple[float, float, float, float]) -> float:
+        market_total_variance = (market_implied_vols ** 2) * time_to_maturities
+
+        def objective(params):
             self._params = params
-            model_total_variance = self.transform(
-                forward=forward, strike=strike, time_to_maturities=time_to_maturities
+            model_iv = self._transform(
+                forward=forward, strike=strike, time_to_maturities=time_to_maturities,
             )
-            # Calculate Mean Squared Error
-            market_implied_variance = (market_implied_vols**2) * (time_to_maturities)
-            return mse(market_implied_variance, model_total_variance)
+            model_total_variance = (model_iv ** 2) * time_to_maturities
+            return mse(market_total_variance, model_total_variance)
 
-        # Constraints for arbitrage-free SSVI:
-        # |rho| < 1
-        # eta > 0
-        # lambda <= 0.5 (Necessary condition for no-butterfly arbitrage)
-        bounds = [(0.00001, None), (-0.999, 0.999), (1e-6, 5.0), (1e-6, 0.5)]
-        optimizer = "L-BFGS-B"
-        logging.info("Fitting SSVI model on %s records", market_implied_vols.shape[0])
-        logging.info("Initial guess: %s", self._params)
-        logging.info("Parameter bounds: %s", bounds)
-        logging.info("Solver: %s", optimizer)
+        bounds = [(1e-5, None), (-0.999, 0.999), (1e-6, 5.0), (1e-6, 0.5)]
+        logging.info("Fitting SSVI model on %s records", len(market_implied_vols))
         result = minimize(
             objective,
             self._params,
-            method=optimizer,
+            method="L-BFGS-B",
             bounds=bounds,
-            options={"maxiter": 1000, "disp": True},
+            options={"maxiter": 1000, "disp": False},
         )
         self._params = result.x
-        logging.info(
-            "Successfully fitted SSVI Model. Found the following Parameters %s",
-            self._params,
-        )
+        logging.info("Successfully fitted SSVI. Parameters: %s", self._params)
         return self
 
     def _transform(
@@ -78,22 +77,28 @@ class SSVISmoother(VolSmoother):
         time_to_maturities: pd.Series | np.ndarray,
         **kwargs,
     ) -> pd.Series | np.ndarray:
-        """
-        Compute Total Variance w(k, theta) using SSVI with Power Law kernel.
+        """Compute SSVI implied volatilities from model parameters.
 
-        Parameters:
-            params: tuple of (sigma, rho, eta, lamb)
+        Args:
+            forward (pd.Series | np.ndarray): Forward prices.
+            strike (pd.Series | np.ndarray): Strike prices.
+            time_to_maturities (pd.Series | np.ndarray): Time to maturities in years.
+            **kwargs: Additional keyword arguments.
 
         Returns:
-            SSVI total variance
+            pd.Series | np.ndarray: Model implied volatilities.
         """
         sigma, rho, eta, lamb = self._params
-        # 1. Pre-calculate log-moneyness (k) and ATM Total Variance (theta) theta: ATM total variance (sigma_atm^2 * T)
+
         k = np.log(np.asarray(strike) / np.asarray(forward))
+        time_to_maturities = np.asarray(time_to_maturities, dtype=float)
         theta = sigma * sigma * time_to_maturities
-        # Power Law kernel: phi(theta)
-        phi = eta / (theta**lamb)
-        # SSVI Formula
-        # w(k, theta) = 0.5 * theta * (1 + rho*phi*k + sqrt((phi*k + rho)^2 + 1 - rho^2))
-        inner_sqrt = np.sqrt((phi * k + rho) ** 2 + 1 - rho**2)
-        return 0.5 * theta * (1 + rho * phi * k + inner_sqrt)
+
+        theta_safe = np.maximum(theta, 1e-12)
+        phi = eta / (theta_safe ** lamb)
+
+        inner_sqrt = np.sqrt((phi * k + rho) ** 2 + 1 - rho ** 2)
+        total_variance = 0.5 * theta * (1 + rho * phi * k + inner_sqrt)
+        total_variance = np.maximum(total_variance, 0.0)
+
+        return np.sqrt(total_variance / np.maximum(time_to_maturities, 1e-12))
