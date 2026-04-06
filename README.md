@@ -35,22 +35,22 @@ investment_lab/
 │   ├── svi.py                   # SVI parametrization (raw)
 │   ├── ssvi.py                  # SSVI parametrization (power-law kernel)
 │   ├── sabr.py                  # SABR model
-│   ├── constant_maturity.py     # Total variance interpolation across maturities
-│   └── reference_iv.py          # Extract a single ATM IV reference per day
+│   ├── constant_maturity.py     # Total variance interpolation across maturities <-
+│   └── reference_iv.py          # Extract a single ATM IV reference per day <-
 │
 ├── stochastic/                  # Stochastic volatility models
 │   ├── base.py                  # Abstract StochasticProcess
-│   ├── heston.py                # Heston model (transition, observation, forecast)
-│   ├── heston_ssm.py            # Heston State Space Model (calibration + UKF)
-│   └── ukf.py                   # Unscented Kalman Filter (generic)
+│   ├── heston.py                # Heston model (transition, observation, forecast) <-
+│   ├── heston_ssm.py            # Heston State Space Model (calibration + UKF) <-
+│   └── ukf.py                   # Unscented Kalman Filter (generic) <-
 │
 ├── signals/                     # Trading signals
-│   ├── implied_realized_spread.py  # Spread: IV reference − Heston forecast
-│   ├── naive_spread.py          # Benchmark: IV reference − rolling realized vol
-│   └── allocation.py            # Z-score allocation signal
+│   ├── implied_realized_spread.py  # Spread: IV reference − Heston forecast <-
+│   ├── naive_spread.py          # Benchmark: IV reference − rolling realized vol <-
+│   └── allocation.py            # Z-score allocation signal <- 
 │
 ├── strategies/
-│   └── dynamic_allocation.py    # Apply allocation overlay to trades
+│   └── dynamic_allocation.py    # Apply allocation overlay to trades <-
 │
 ├── metrics/                     # Performance & risk metrics
 │   ├── performance.py           # Sharpe, Calmar, hit ratio, drawdown
@@ -147,7 +147,7 @@ $$a_t = 0.25 \times z_t$$
 
 ### 4. Strategy & Backtest
 
-The strategy is a **short variance swap** (30-day, weekly roll). The `DynamicAllocationOverlay` multiplies each trade's weight by the allocation signal from the previous day (lag = 1 business day to avoid look-ahead bias).
+The strategy is a **short variance swap** (30-day, weekly roll), delta neutral by construction. The `DynamicAllocationOverlay` multiplies each trade's weight by the allocation signal from the previous day (lag = 1 day to avoid look-ahead bias).
 
 We compare three variants:
 - **Static**: constant sizing, no timing
