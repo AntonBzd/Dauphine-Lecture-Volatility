@@ -38,7 +38,7 @@ def build_zscore_allocation_signal(
     df["spread_std"] = df.groupby("ticker")[spread_col].transform(lambda x: x.rolling(rolling_window).std())
     df["spread_zscore"] = (df[spread_col] - df["spread_mean"]) / df["spread_std"].replace(0, np.nan)
     df["allocation"] = (center_at + zscore_scaling * df["spread_zscore"]).clip(lower=min_allocation, upper=max_allocation)
-    return df[["date", "ticker", spread_col, "spread_zscore", "allocation"]]
+    return df[["date", "ticker", spread_col, "spread_zscore", "allocation"]].dropna(subset=["allocation"]).reset_index(drop=True)
 
 
 def build_percentile_allocation_signal(
