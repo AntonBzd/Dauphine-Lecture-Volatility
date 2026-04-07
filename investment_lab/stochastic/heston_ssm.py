@@ -194,7 +194,7 @@ class HestonStateSpaceModel:
         else:
             rho = -0.70
 
-        theta_approx = float(np.median(var_series))
+        theta_approx = float(np.mean(var_series)) # median
         mu = float(returns.mean() * TRADING_DAYS_PER_YEAR + 0.5 * theta_approx)
         mu = np.clip(mu, -0.50, 0.50)
 
@@ -309,10 +309,24 @@ class HestonStateSpaceModel:
         df_out["rv_proxy"] = rv_proxy
 
         horizon_in_years = self._forecast_horizon_days / TRADING_DAYS_PER_YEAR
+        
+        # df_out["forecast_average_variance"] = df_out["filtered_variance"].apply(
+        #     lambda x: model.forecast_average_variance(current_variance=x, horizon_in_years=horizon_in_years)
+        # )
+        # df_out["forecast_volatility"] = np.sqrt(df_out["forecast_average_variance"])
+
+        df_out["filtered_volatility"] = np.sqrt(df_out["filtered_variance"])   # ← c'est σ̂_t de la consigne
+
+        # On garde le forecast forward comme info additionnelle, sous un nom distinct
         df_out["forecast_average_variance"] = df_out["filtered_variance"].apply(
             lambda x: model.forecast_average_variance(current_variance=x, horizon_in_years=horizon_in_years)
         )
-        df_out["forecast_volatility"] = np.sqrt(df_out["forecast_average_variance"])
+        df_out["forecast_volatility_forward"] = np.sqrt(df_out["forecast_average_variance"])
+
+        # forecast_volatility pointe maintenant sur l'instantané (conforme consigne)
+        df_out["forecast_volatility"] = df_out["filtered_volatility"]
+
+        ###
 
         for key, value in asdict(params).items():
             df_out[key] = value
@@ -516,10 +530,17 @@ class HestonStateSpaceModel:
             results.append({
                 "date": last_row["date"],
                 "spot": last_row["spot"],
+                #"filtered_variance": last_row["filtered_variance"],
+                # "predicted_variance": last_row["predicted_variance"],
+                # "forecast_average_variance": last_row["forecast_average_variance"],
+                ###
                 "filtered_variance": last_row["filtered_variance"],
-                "predicted_variance": last_row["predicted_variance"],
+                "filtered_volatility": last_row["filtered_volatility"],         
+                "forecast_volatility": last_row["forecast_volatility"],         
+                "forecast_volatility_forward": last_row["forecast_volatility_forward"],
                 "forecast_average_variance": last_row["forecast_average_variance"],
-                "forecast_volatility": last_row["forecast_volatility"],
+                ###
+                # "forecast_volatility": last_row["forecast_volatility"],
                 "loglikelihood": last_row["loglikelihood"],
                 "rv_proxy": last_row["rv_proxy"],
                 "mu": params.mu,
