@@ -67,6 +67,7 @@ class HestonModel:
         Returns:
             HestonParams: Model parameters.
         """
+        return self._params
 
     @property
     def dt(self) -> float:

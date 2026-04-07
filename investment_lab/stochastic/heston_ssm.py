@@ -73,11 +73,11 @@ class HestonStateSpaceModel:
         return self._rolling_window
 
     @property
-    def rolling_window(self) -> int:
-        """Return the rolling calibration window length.
+    def forecast_horizon_days(self) -> int:
+        """Return the forecast horizon in days.
 
         Returns:
-            int: Number of observations used in each rolling calibration.
+            int: Number of days for the volatility forecast horizon.
         """
         return self._forecast_horizon_days
 
@@ -129,6 +129,24 @@ class HestonStateSpaceModel:
             rho=float(params[4]),
         )
 
+    # def _compute_rv_proxy(self, log_spot: pd.Series) -> np.ndarray:
+    #     """Compute a rolling realized variance proxy from a log-spot series.
+
+    #     Args:
+    #         log_spot (pd.Series): Time series of log-spot prices.
+
+    #     Returns:
+    #         np.ndarray: Annualized realized variance proxy.
+    #     """
+    #     returns = log_spot.diff()
+    #     rolling_var = returns.rolling(self._rv_proxy_window).var() * TRADING_DAYS_PER_YEAR
+
+    #     global_var = float(returns.dropna().var() * TRADING_DAYS_PER_YEAR)
+    #     rv_proxy = rolling_var.fillna(global_var).values
+    #     rv_proxy = np.clip(rv_proxy, self._minimum_variance, 5.0)
+
+    #     return rv_proxy
+
     def _compute_rv_proxy(self, log_spot: pd.Series) -> np.ndarray:
         """Compute a rolling realized variance proxy from a log-spot series.
 
@@ -139,12 +157,12 @@ class HestonStateSpaceModel:
             np.ndarray: Annualized realized variance proxy.
         """
         returns = log_spot.diff()
-        rolling_var = returns.rolling(self._rv_proxy_window).var() * TRADING_DAYS_PER_YEAR
-
-        global_var = float(returns.dropna().var() * TRADING_DAYS_PER_YEAR)
-        rv_proxy = rolling_var.fillna(global_var).values
+        qv = returns.pow(2).rolling(self._rv_proxy_window).sum() * (TRADING_DAYS_PER_YEAR / self._rv_proxy_window)
+        
+        global_var = float(returns.dropna().pow(2).mean() * TRADING_DAYS_PER_YEAR)
+        rv_proxy = qv.fillna(global_var).values
         rv_proxy = np.clip(rv_proxy, self._minimum_variance, 5.0)
-
+        
         return rv_proxy
 
 
