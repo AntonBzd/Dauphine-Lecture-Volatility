@@ -53,9 +53,9 @@ class SVISmoother(VolSmoother):
             params: tuple[float, float, float, float, float],
         ) -> float:
             a, b, rho, m, sigma = params
-            forward = np.asarray(forward)
-            strike = np.asarray(strike)
-            forward_log_moneyness = np.log(strike / forward)
+            fwd = np.asarray(forward)
+            strk = np.asarray(strike)
+            forward_log_moneyness = np.log(strk / fwd)
             total_variance = a + b * (
                 rho * (forward_log_moneyness - m)
                 + np.sqrt((forward_log_moneyness - m) ** 2 + sigma**2)

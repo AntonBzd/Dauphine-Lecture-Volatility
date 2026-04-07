@@ -128,62 +128,62 @@ class ReferenceIVExtractor(ABC):
         )
         return float(np.asarray(fitted_vol).reshape(-1)[0])
     
-    def _extract_single_date_ticker(self, df_cross_section: pd.DataFrame) -> Optional[dict]:
-        """Extract the reference implied volatility for one date and one ticker.
+    # def _extract_single_date_ticker(self, df_cross_section: pd.DataFrame) -> Optional[dict]:
+    #     """Extract the reference implied volatility for one date and one ticker.
 
-        Args:
-            df_cross_section (pd.DataFrame): Option cross-section for a single date and ticker.
+    #     Args:
+    #         df_cross_section (pd.DataFrame): Option cross-section for a single date and ticker.
 
-        Returns:
-            Optional[dict]: Dictionary containing the extracted reference implied volatility
-            and associated metadata.
-        """
-        df = self._filter_cross_section(df_cross_section)
-        if len(df) == 0:
-            return None
+    #     Returns:
+    #         Optional[dict]: Dictionary containing the extracted reference implied volatility
+    #         and associated metadata.
+    #     """
+    #     df = self._filter_cross_section(df_cross_section)
+    #     if len(df) == 0:
+    #         return None
 
-        fitted_points = []
-        for expiration, df_expiry in df.groupby("expiration"):
-            try:
-                if len(df_expiry) < self._minimum_points_per_expiry:
-                    continue
-                fitted_iv = self._fit_one_expiry_slice(df_expiry)
-                fitted_points.append(
-                    {
-                        "date": df_expiry["date"].iloc[0],
-                        "ticker": df_expiry["ticker"].iloc[0],
-                        "expiration": expiration,
-                        "day_to_expiration": int(df_expiry["day_to_expiration"].iloc[0]),
-                        "fitted_iv": fitted_iv,
-                    }
-                )
-            except Exception as exc:
-                logging.warning(
-                    "Surface fitting failed for date=%s ticker=%s expiration=%s. Error=%s",
-                    df_expiry["date"].iloc[0],
-                    df_expiry["ticker"].iloc[0],
-                    expiration,
-                    exc,
-                )
+    #     fitted_points = []
+    #     for expiration, df_expiry in df.groupby("expiration"):
+    #         try:
+    #             if len(df_expiry) < self._minimum_points_per_expiry:
+    #                 continue
+    #             fitted_iv = self._fit_one_expiry_slice(df_expiry)
+    #             fitted_points.append(
+    #                 {
+    #                     "date": df_expiry["date"].iloc[0],
+    #                     "ticker": df_expiry["ticker"].iloc[0],
+    #                     "expiration": expiration,
+    #                     "day_to_expiration": int(df_expiry["day_to_expiration"].iloc[0]),
+    #                     "fitted_iv": fitted_iv,
+    #                 }
+    #             )
+    #         except Exception as exc:
+    #             logging.warning(
+    #                 "Surface fitting failed for date=%s ticker=%s expiration=%s. Error=%s",
+    #                 df_expiry["date"].iloc[0],
+    #                 df_expiry["ticker"].iloc[0],
+    #                 expiration,
+    #                 exc,
+    #             )
 
-        if len(fitted_points) == 0:
-            return None
+    #     if len(fitted_points) == 0:
+    #         return None
 
-        df_fitted = pd.DataFrame(fitted_points).sort_values("day_to_expiration")
-        iv_reference = interpolate_total_variance_from_days(
-            target_day_to_maturity=self._target_day_to_expiration,
-            day_to_maturities=df_fitted["day_to_expiration"].to_numpy(),
-            implied_volatilities=df_fitted["fitted_iv"].to_numpy(),
-        )
+    #     df_fitted = pd.DataFrame(fitted_points).sort_values("day_to_expiration")
+    #     iv_reference = interpolate_total_variance_from_days(
+    #         target_day_to_maturity=self._target_day_to_expiration,
+    #         day_to_maturities=df_fitted["day_to_expiration"].to_numpy(),
+    #         implied_volatilities=df_fitted["fitted_iv"].to_numpy(),
+    #     )
 
-        return {
-            "date": df_fitted["date"].iloc[0],
-            "ticker": df_fitted["ticker"].iloc[0],
-            "iv_reference": iv_reference,
-            "target_day_to_expiration": self._target_day_to_expiration,
-            "target_moneyness": self._target_moneyness,
-            "n_fitted_expiries": len(df_fitted),
-        }
+    #     return {
+    #         "date": df_fitted["date"].iloc[0],
+    #         "ticker": df_fitted["ticker"].iloc[0],
+    #         "iv_reference": iv_reference,
+    #         "target_day_to_expiration": self._target_day_to_expiration,
+    #         "target_moneyness": self._target_moneyness,
+    #         "n_fitted_expiries": len(df_fitted),
+    #     }
 
     def extract(
         self,
