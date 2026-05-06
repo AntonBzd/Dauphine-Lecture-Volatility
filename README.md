@@ -2,7 +2,6 @@
 
 > **Course project** — Master 272, Paris Dauphine University  
 > **Course**: Stratégie de la Volatilité (B. Zloch)  
-> **Authors**: Antonin, Issam, Ziad  
 > **Branch**: `Volatility_Strategies_Project`
 
 This project builds on the course infrastructure ([main branch](https://github.com/AntonBzd/Dauphine-Lecture-Volatility)) to explore **realized volatility timing**: dynamically sizing a short variance swap based on the implied–realized volatility spread.
